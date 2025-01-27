@@ -1,48 +1,35 @@
-import streamlit as st
+from flask import Flask, request, render_template
+from src.pipeline.predict_pipeline import CustomData, PredictPipeline
 
-# Function to load HTML content from a file
-def load_html(file_path):
-    with open(file_path, "r") as file:
-        return file.read()
+app = Flask(__name__)
 
-# Load and display index.html (like the home page in your app)
-index_html = load_html("templates/index.html")
-st.markdown(index_html, unsafe_allow_html=True)
+# Route for the home page
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# Some other Streamlit UI components
-st.title("Student Performance Prediction")
+# Route for prediction
+@app.route('/predictdata', methods=['GET', 'POST'])
+def predict_datapoint():
+    if request.method == 'POST':
+        try:
+            data = CustomData(
+                gender=request.form.get('gender'),
+                race_ethnicity=request.form.get('ethnicity'),
+                parental_level_of_education=request.form.get('parental_level_of_education'),
+                lunch=request.form.get('lunch'),
+                test_preparation_course=request.form.get('test_preparation_course'),
+                reading_score=float(request.form.get('reading_score')),  # Corrected line
+                writing_score=float(request.form.get('writing_score'))   # Corrected line
+            )
+            pred_df = data.get_data_as_data_frame()
+            predict_pipeline = PredictPipeline()
+            results = predict_pipeline.predict(pred_df)
+            return render_template('home.html', results=results[0])  # Display the result
+        except Exception as e:
+            return render_template('home.html', error="Error occurred: " + str(e))  # Provide more context in the error message
+    return render_template('home.html')  # For GET request, just render the form
 
-# Inputs for prediction
-gender = st.selectbox("Gender", ("Male", "Female"))
-ethnicity = st.selectbox("Ethnicity", ("Group A", "Group B", "Group C", "Group D"))
-parental_level_of_education = st.selectbox("Parental Level of Education", ("Some College", "High School", "Associate's Degree", "Bachelor's Degree", "Master's Degree"))
-lunch = st.selectbox("Lunch", ("Standard", "Free/Reduced"))
-test_preparation_course = st.selectbox("Test Preparation Course", ("None", "Completed"))
-reading_score = st.number_input("Reading Score", min_value=0, max_value=100)
-writing_score = st.number_input("Writing Score", min_value=0, max_value=100)
-
-# Prediction button and logic
-if st.button("Predict"):
-    try:
-        data = CustomData(
-            gender=gender,
-            race_ethnicity=ethnicity,
-            parental_level_of_education=parental_level_of_education,
-            lunch=lunch,
-            test_preparation_course=test_preparation_course,
-            reading_score=reading_score,
-            writing_score=writing_score
-        )
-        pred_df = data.get_data_as_data_frame()
-        predict_pipeline = PredictPipeline()
-        results = predict_pipeline.predict(pred_df)
-        
-        # Show prediction result
-        st.subheader("Prediction Result")
-        st.write(f"The predicted performance is: {results[0]}")
-    except Exception as e:
-        st.error(f"Error occurred: {str(e)}")
-
-# Optionally, load and display home.html (if needed)
-home_html = load_html("templates/home.html")
-st.markdown(home_html, unsafe_allow_html=True)
+if __name__ == "__main__":
+    print("Starting Flask server...")
+    app.run(host='0.0.0.0', port=5000, debug=True)
