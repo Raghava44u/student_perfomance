@@ -31,5 +31,5 @@ def predict_datapoint():
     return render_template('home.html')  # For GET request, just render the form
 
 if __name__ == "__main__":
-    print("Starting Flask server...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    
+    app.run()
